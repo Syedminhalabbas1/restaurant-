@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DineFlow Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">⬡ DineFlow</div>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Menu</a></li>
+      <li><a href="order.html">My Order</a></li>
+      <li><a href="admin.html">Admin</a></li>
+    </ul>
+    <div class="cart-btn" onclick="window.location='order.html'">
+      🛒 <span id="cart-count">0</span>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-text">
+      <p class="hero-sub">Welcome to</p>
+      <h1 class="hero-title">DineFlow<br/><em>Management System</em></h1>
+      <p class="hero-desc">Smart ordering. Real-time tracking. Exceptional dining.</p>
+      <a href="#menu" class="hero-btn">Explore Menu</a>
+    </div>
+    <div class="hero-img">🍝</div>
+  </section>
+
+  <!-- LIVE STATS DASHBOARD -->
+  <section class="stats-section">
+    <h2 class="section-title" style="text-align:center;margin-bottom:24px;">📊 Live Dashboard</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🍽</div>
+        <div class="stat-number" id="stat-menu">—</div>
+        <div class="stat-label">Menu Items</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-number" id="stat-orders">—</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-number" id="stat-pending">—</div>
+        <div class="stat-label">Pending Orders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-number" id="stat-revenue">—</div>
+        <div class="stat-label">Total Revenue</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="menu" class="menu-section">
+    <h2 class="section-title">Our Menu</h2>
+    <div class="categories">
+      <button class="cat-btn active" onclick="filterMenu('all', this)">All</button>
+      <button class="cat-btn" onclick="filterMenu('Fast Food', this)">🍔 Fast Food</button>
+      <button class="cat-btn" onclick="filterMenu('Italian', this)">🍕 Italian</button>
+      <button class="cat-btn" onclick="filterMenu('Healthy', this)">🥗 Healthy</button>
+      <button class="cat-btn" onclick="filterMenu('Desserts', this)">🍰 Desserts</button>
+      <button class="cat-btn" onclick="filterMenu('Drinks', this)">🥤 Drinks</button>
+    </div>
+    <div class="menu-grid" id="menu-grid">
+      <div class="loading">Loading menu...</div>
+    </div>
+  </section>
+
+  <!-- REVIEWS SECTION -->
+  <section class="reviews-section" id="reviews-section">
+    <h2 class="section-title" style="text-align:center;">⭐ Customer Reviews</h2>
+    <p style="text-align:center;color:#7a5c3e;margin-bottom:28px;">What our customers say</p>
+    <div class="reviews-grid" id="reviews-grid">
+      <div class="loading">Loading reviews...</div>
+    </div>
+
+    <!-- Add Review Form -->
+    <div class="review-form-box">
+      <h3>Leave a Review</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="review-name" placeholder="e.g. John Smith"/>
+        </div>
+        <div class="form-group">
+          <label>Menu Item</label>
+          <select id="review-item"></select>
+        </div>
+      </div>
+      <div class="form-group" style="margin:14px 0;">
+        <label>Rating</label>
+        <div class="star-rating" id="star-rating">
+          <span class="star" data-val="1">★</span>
+          <span class="star" data-val="2">★</span>
+          <span class="star" data-val="3">★</span>
+          <span class="star" data-val="4">★</span>
+          <span class="star" data-val="5">★</span>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Comment</label>
+        <input type="text" id="review-comment" placeholder="Tell us about your experience..."/>
+      </div>
+      <button class="submit-btn" onclick="submitReview()">Submit Review</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+  <script>
+    let allItems = [];
+    let selectedRating = 0;
+
+    // Star rating
+    document.querySelectorAll('.star').forEach(star => {
+      star.addEventListener('click', () => {
+        selectedRating = parseInt(star.dataset.val);
+        document.querySelectorAll('.star').forEach((s, i) => {
+          s.classList.toggle('active', i < selectedRating);
+        });
+      });
+    });
+
+    async function loadMenu() {
+      try {
+        const res = await fetch('http://localhost:3000/api/menu');
+        allItems = await res.json();
+        renderMenu(allItems);
+        loadReviewItemSelect(allItems);
+      } catch (e) {
+        document.getElementById('menu-grid').innerHTML =
+          '<p class="error">⚠️ Cannot connect to server. Make sure backend is running.</p>';
+      }
+    }
+
+    function renderMenu(items) {
+      const grid = document.getElementById('menu-grid');
+      if (!items.length) { grid.innerHTML = '<p class="error">No items found.</p>'; return; }
+      grid.innerHTML = items.map(item => `
+        <div class="menu-card" data-category="${item.category}">
+          <div class="card-emoji">${getCategoryEmoji(item.category)}</div>
+          <div class="card-body">
+            <span class="card-cat">${item.category}</span>
+            <h3 class="card-name">${item.name}</h3>
+            <p class="card-desc">${item.description}</p>
+            <div class="card-rating" id="rating-${item.id}">⭐ Loading...</div>
+            <div class="card-footer">
+              <span class="card-price">$${parseFloat(item.price).toFixed(2)}</span>
+              <button class="add-btn" onclick="addToCart(${item.id}, '${item.name}', ${item.price})">+ Add</button>
+            </div>  
+          </div>
+        </div>`).join('');
+      loadAllRatings(items);
+    }
+
+    async function loadAllRatings(items) {
+      for (const item of items) {
+        try {
+          const res = await fetch(`http://localhost:3000/api/reviews/${item.id}`);
+          const reviews = await res.json();
+          const el = document.getElementById(`rating-${item.id}`);
+          if (el) {
+            if (reviews.length) {
+              const avg = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+              el.innerHTML = `⭐ ${avg} <span style="color:#999;font-size:0.8rem;">(${reviews.length} reviews)</span>`;
+            } else {
+              el.innerHTML = `<span style="color:#999;font-size:0.8rem;">No reviews yet</span>`;
+            }
+          }
+        } catch(e) {}
+      }
+    }
+
+    function loadReviewItemSelect(items) {
+      const sel = document.getElementById('review-item');
+      sel.innerHTML = items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+    }
+
+    async function loadReviews() {
+      try {
+        const res = await fetch('http://localhost:3000/api/reviews');
+        const reviews = await res.json();
+        const grid = document.getElementById('reviews-grid');
+        if (!reviews.length) {
+          grid.innerHTML = '<p style="text-align:center;color:#999;">No reviews yet. Be the first!</p>';
+          return;
+        }
+        grid.innerHTML = reviews.slice(0, 6).map(r => `
+          <div class="review-card">
+            <div class="review-header">
+              <strong>${r.customer_name}</strong>
+              <span class="review-item-name">— ${r.item_name}</span>
+            </div>
+            <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+            <p class="review-comment">${r.comment}</p>
+          </div>`).join('');
+      } catch(e) {}
+    }
+
+    async function submitReview() {
+      const name = document.getElementById('review-name').value.trim();
+      const menu_id = document.getElementById('review-item').value;
+      const comment = document.getElementById('review-comment').value.trim();
+      if (!name) { showToast('⚠️ Enter your name'); return; }
+      if (!selectedRating) { showToast('⚠️ Select a rating'); return; }
+      if (!comment) { showToast('⚠️ Write a comment'); return; }
+      try {
+        await fetch('http://localhost:3000/api/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer_name: name, menu_id, rating: selectedRating, comment })
+        });
+        showToast('✅ Review submitted!');
+        document.getElementById('review-name').value = '';
+        document.getElementById('review-comment').value = '';
+        selectedRating = 0;
+        document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+        loadReviews();
+        loadMenu();
+      } catch(e) {
+        showToast('❌ Failed to submit review');
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('http://localhost:3000/api/stats');
+        const s = await res.json();
+        document.getElementById('stat-menu').textContent = s.totalMenu;
+        document.getElementById('stat-orders').textContent = s.totalOrders;
+        document.getElementById('stat-pending').textContent = s.pendingOrders;
+        document.getElementById('stat-revenue').textContent = '$' + parseFloat(s.totalRevenue || 0).toFixed(2);
+      } catch(e) {}
+    }
+
+    function filterMenu(cat, btn) {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderMenu(cat === 'all' ? allItems : allItems.filter(i => i.category === cat));
+    }
+
+    function getCategoryEmoji(cat) {
+      const map = { 'Fast Food':'🍔', 'Italian':'🍕', 'Healthy':'🥗', 'Desserts':'🍰', 'Drinks':'🥤' };
+      return map[cat] || '🍽';
+    }
+
+    loadMenu();
+    loadReviews();
+    loadStats();
+    setInterval(loadStats, 30000);
+    updateCartCount();
+  </script>
+</body>
+</html> 

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — DineFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">⬡ DineFlow</div>
+    <ul class="nav-links"> 
+      <li><a href="index.html">Menu</a></li>
+      <li><a href="order.html">My Order</a></li>
+      <li><a href="admin.html" class="active">Admin</a></li>
+    </ul>
+    <div class="cart-btn" onclick="logout()" style="font-size:0.85rem;padding:8px 16px;">🚪 Logout</div>
+  </nav>
+
+  <div class="page-container" style="max-width:1100px;">
+    <h2 class="page-title">⚙️ Admin Panel — DineFlow</h2>
+
+    <!-- LIVE STATS -->
+    <div class="stats-grid" style="margin-bottom:32px;">
+      <div class="stat-card">
+        <div class="stat-icon">🍽</div>
+        <div class="stat-number" id="stat-menu">—</div>
+        <div class="stat-label">Menu Items</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-number" id="stat-orders">—</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-number" id="stat-pending">—</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-number" id="stat-revenue">—</div>
+        <div class="stat-label">Revenue</div>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+
+      <!-- LEFT: Orders -->
+      <div class="admin-card">
+        <h3>📋 Live Orders</h3>
+        <div class="orders-list" id="orders-list">
+          <div class="loading">Loading orders...</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Add + Edit Menu -->
+      <div class="admin-card">
+        <h3>➕ Add Menu Item</h3>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Item Name</label>
+          <input type="text" id="new-name" placeholder="e.g. Tiramisu"/>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Category</label>
+          <select id="new-cat" style="padding:10px 14px;border:1.5px solid #f5e6d0;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.95rem;width:100%;">
+            <option>Fast Food</option>
+            <option>Italian</option>
+            <option>Healthy</option>
+            <option>Desserts</option>
+            <option>Drinks</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Price ($)</label>
+          <input type="number" id="new-price" placeholder="0.00" step="0.01"/>
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label>Description</label>
+          <input type="text" id="new-desc" placeholder="Short description..."/>
+        </div>
+        <button class="submit-btn" onclick="addMenuItem()">Add to Menu</button>
+
+        <hr style="margin:28px 0;border:none;border-top:1.5px solid #f5e6d0;"/>
+
+        <!-- EDIT / REMOVE -->
+        <h3 style="margin-bottom:16px;">✏️ Edit / Remove Items</h3>
+        <div id="manage-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div id="edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:36px;width:90%;max-width:420px;">
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:#3d1f0d;margin-bottom:20px;">✏️ Edit Item</h3>
+      <input type="hidden" id="edit-id"/>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Item Name</label>
+        <input type="text" id="edit-name"/>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Price ($)</label>
+        <input type="number" id="edit-price" step="0.01"/>
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Description</label>
+        <input type="text" id="edit-desc"/>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button class="submit-btn" onclick="saveEdit()" style="flex:1;">💾 Save</button>
+        <button onclick="closeModal()" style="flex:1;padding:12px;border:1.5px solid #f5e6d0;border-radius:8px;background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+  <script>
+    // AUTH CHECK
+    if (sessionStorage.getItem('adminLoggedIn') !== 'true') {
+      window.location.href = 'admin-login.html';
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminLoggedIn');
+      window.location.href = 'admin-login.html';
+    }
+
+    let menuItems = [];
+
+    async function loadStats() {
+      try {
+        const res = await fetch('http://localhost:3000/api/stats');
+        const s = await res.json();
+        document.getElementById('stat-menu').textContent = s.totalMenu;
+        document.getElementById('stat-orders').textContent = s.totalOrders;
+        document.getElementById('stat-pending').textContent = s.pendingOrders;
+        document.getElementById('stat-revenue').textContent = '$' + parseFloat(s.totalRevenue || 0).toFixed(2);
+      } catch(e) {}
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch('http://localhost:3000/api/orders');
+        const orders = await res.json();
+        const list = document.getElementById('orders-list');
+        if (!orders.length) { list.innerHTML = '<p class="empty">No orders yet.</p>'; return; }
+        list.innerHTML = orders.map(o => `
+          <div class="order-item">
+            <div class="order-info">
+              <strong>${o.customer_name} — Table ${o.table_number}</strong>
+              <span>$${parseFloat(o.total_price).toFixed(2)} &nbsp;|&nbsp; ${new Date(o.created_at).toLocaleTimeString()}</span>
+            </div>
+            <select class="status-select" onchange="updateStatus(${o.id}, this.value)">
+              <option value="pending"   ${o.status==='pending'   ?'selected':''}>⏳ Pending</option>
+              <option value="preparing" ${o.status==='preparing' ?'selected':''}>👨‍🍳 Preparing</option>
+              <option value="ready"     ${o.status==='ready'     ?'selected':''}>✅ Ready</option>
+            </select>
+          </div>`).join('');
+      } catch(e) {
+        document.getElementById('orders-list').innerHTML = '<p class="error">Cannot connect to server.</p>';
+      }
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        await fetch(`http://localhost:3000/api/orders/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        showToast('✅ Status updated!');
+        loadStats();
+      } catch(e) { showToast('❌ Update failed'); }
+    }
+
+    async function loadMenuManage() {
+      try {
+        const res = await fetch('http://localhost:3000/api/menu');
+        menuItems = await res.json();
+        const el = document.getElementById('manage-list');
+        el.innerHTML = menuItems.map(item => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5e6d0;gap:8px;">
+            <span style="font-size:0.9rem;color:#3d1f0d;flex:1;">${item.name} <span style="color:#7a5c3e;font-size:0.8rem;">— $${parseFloat(item.price).toFixed(2)}</span></span>
+            <button onclick="openEdit(${item.id}, '${item.name.replace(/'/g,"\\'")}', ${item.price}, '${(item.description||'').replace(/'/g,"\\'")}' )" style="padding:6px 12px;background:#c8963e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;">✏️ Edit</button>
+            <button class="remove-btn" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g,"\\'")}')">✕</button>
+          </div>`).join('');
+      } catch(e) {
+        document.getElementById('manage-list').innerHTML = '<p class="error">Cannot load menu.</p>';
+      }
+    }
+
+    function openEdit(id, name, price, desc) {
+      document.getElementById('edit-id').value = id;
+      document.getElementById('edit-name').value = name;
+      document.getElementById('edit-price').value = price;
+      document.getElementById('edit-desc').value = desc;
+      document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    async function saveEdit() {
+      const id = document.getElementById('edit-id').value;
+      const name = document.getElementById('edit-name').value.trim();
+      const price = document.getElementById('edit-price').value;
+      const description = document.getElementById('edit-desc').value.trim();
+      if (!name || !price) { showToast('⚠️ Fill all fields'); return; }
+      try {
+        await fetch(`http://localhost:3000/api/menu/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, price: parseFloat(price), description })
+        });
+        showToast('✅ Item updated!');
+        closeModal();
+        loadMenuManage();
+        loadStats();
+      } catch(e) { showToast('❌ Update failed'); }
+    }
+
+    async function addMenuItem() {
+      const name  = document.getElementById('new-name').value.trim();
+      const cat   = document.getElementById('new-cat').value;
+      const price = document.getElementById('new-price').value;
+      const desc  = document.getElementById('new-desc').value.trim();
+      if (!name || !price) { showToast('⚠️ Fill in name and price'); return; }
+      try {
+        const res = await fetch('http://localhost:3000/api/menu', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, category: cat, price: parseFloat(price), description: desc })
+        });
+        const data = await res.json();
+        showToast(data.message || '✅ Added!');
+        document.getElementById('new-name').value = '';
+        document.getElementById('new-price').value = '';
+        document.getElementById('new-desc').value = '';
+        loadMenuManage();
+        loadStats();
+      } catch(e) { showToast('❌ Failed to add item'); }
+    }
+
+    async function deleteItem(id, name) {
+      if (!confirm(`Remove "${name}" from menu?`)) return;
+      try {
+        await fetch(`http://localhost:3000/api/menu/${id}`, { method: 'DELETE' });
+        showToast(`✅ ${name} removed!`);
+        loadMenuManage();
+        loadStats();
+      } catch(e) { showToast('❌ Failed to remove'); }
+    }
+
+    loadOrders();
+    loadMenuManage();
+    loadStats();
+    setInterval(loadOrders, 15000);
+    setInterval(loadStats, 30000);
+    updateCartCount();
+  </script>
+</body>
+</html> 

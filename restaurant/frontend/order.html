@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Order — DineFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">⬡ DineFlow</div>
+    <ul class="nav-links">
+      <li><a href="index.html">Menu</a></li>
+      <li><a href="order.html" class="active">My Order</a></li>
+      <li><a href="admin.html">Admin</a></li>
+    </ul>
+    <div class="cart-btn">🛒 <span id="cart-count">0</span></div>
+  </nav>
+
+  <div class="page-container">
+    <h2 class="page-title">Your Order 🛒</h2>
+
+    <div id="cart-section">
+      <table class="cart-table" id="cart-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Subtotal</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody id="cart-body"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="3" style="padding:14px 16px;font-weight:700;">Total</td>
+            <td id="cart-total" style="padding:14px 16px;font-weight:700;font-size:1.15rem;color:#b33a1e;"></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="order-form" id="checkout-form">
+        <h3>Complete Your Order</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" id="cust-name" placeholder="e.g. John Smith"/>
+          </div>
+          <div class="form-group">
+            <label>Table Number</label>
+            <input type="number" id="table-num" placeholder="e.g. 5" min="1" max="50"/>
+          </div>
+        </div>
+        <button class="submit-btn" onclick="placeOrder()">🍽 Place Order</button>
+      </div>
+
+      <div id="empty-cart" class="empty" style="display:none;">
+        <p style="font-size:2rem;">🛒</p>
+        <p>Your cart is empty. <a href="index.html" style="color:#c8963e;">Browse the menu</a></p>
+      </div>
+    </div>
+
+    <div id="success-msg" style="display:none; text-align:center; padding:60px 20px;">
+      <div style="font-size:4rem;">🎉</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;color:#3d1f0d;margin:16px 0 8px;">Order Placed!</h2>
+      <p style="color:#7a5c3e;margin-bottom:8px;">Your order is being prepared. Thank you!</p>
+      <p id="order-id-msg" style="color:#c8963e;font-weight:600;margin-bottom:24px;"></p>
+      <a href="index.html" class="hero-btn" style="text-decoration:none;padding:12px 32px;">Order More</a>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+  <script>
+    function renderCart() {
+      const cart = getCart();
+      const tbody = document.getElementById('cart-body');
+      const totalEl = document.getElementById('cart-total');
+      const emptyDiv = document.getElementById('empty-cart');
+      const tableEl = document.getElementById('cart-table');
+      const formEl = document.getElementById('checkout-form');
+
+      if (!cart.length) {
+        tableEl.style.display = 'none';
+        formEl.style.display = 'none';
+        emptyDiv.style.display = 'block';
+        return;
+      }
+
+      tableEl.style.display = 'table';
+      formEl.style.display = 'block';
+      emptyDiv.style.display = 'none';
+
+      let total = 0;
+      tbody.innerHTML = cart.map(item => {
+        const sub = item.price * item.quantity;
+        total += sub;
+        return `<tr>
+          <td><strong>${item.name}</strong></td>
+          <td>$${item.price.toFixed(2)}</td>
+          <td>${item.quantity}</td>
+          <td>$${sub.toFixed(2)}</td>
+          <td><button class="remove-btn" onclick="removeItem(${item.menu_id})">✕ Remove</button></td>
+        </tr>`;
+      }).join('');
+
+      totalEl.textContent = `$${total.toFixed(2)}`;
+      updateCartCount();
+    }
+
+    function removeItem(id) {
+      removeFromCart(id);
+      renderCart();
+    }
+
+    async function placeOrder() {
+      const name = document.getElementById('cust-name').value.trim();
+      const table = document.getElementById('table-num').value.trim();
+      const cart = getCart();
+
+      if (!name) { showToast('⚠️ Please enter your name'); return; }
+      if (!table) { showToast('⚠️ Please enter your table number'); return; }
+      if (!cart.length) { showToast('⚠️ Your cart is empty'); return; }
+
+      const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+
+      try {
+        const res = await fetch('http://localhost:3000/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_name: name,
+            table_number: parseInt(table),
+            total_price: total,
+            items: cart.map(i => ({ menu_id: i.menu_id, quantity: i.quantity }))
+          })
+        });
+
+        const data = await res.json();
+        if (data.order_id) {
+          saveCart([]);
+          document.getElementById('cart-section').style.display = 'none';
+          document.getElementById('success-msg').style.display = 'block';
+          document.getElementById('order-id-msg').textContent = `Order #${data.order_id} received!`;
+        } else {
+          showToast('❌ Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch(e) {
+        showToast('❌ Cannot connect to server');
+      }
+    }
+
+    renderCart();
+  </script>
+</body>
+</html>  
