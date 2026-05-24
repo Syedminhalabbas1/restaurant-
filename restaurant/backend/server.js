@@ -210,6 +210,4 @@ app.post('/api/reviews', async (req, res) => {
 });
 
 
-app.listen(3000, () => {
-    console.log('🚀 DineFlow Server Running on Port 3000');
-});
+module.exports = app;
