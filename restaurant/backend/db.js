@@ -1,25 +1,24 @@
-const sql = require('mssql');
+const { Pool } = require('pg');
 
-const config = {
-    server: 'DESKTOP-EQ55Q8H',
-    database: 'restaurant_db',
-    user: 'sa',
-    password: 'Admin123', 
-    port: 1433,
-    options: {
-        trustServerCertificate: true,
-        encrypt: false
-    }
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+const sql = {
+  NVarChar: 'text',
+  Int: 'int',
+  Decimal: () => 'decimal'
 };
 
-const poolPromise = new sql.ConnectionPool(config)
-    .connect()
-    .then(pool => {
-        console.log('✅ Database Connected');
-        return pool;
-    })
-    .catch(err => {
-        console.log('❌ Connection Failed:', err.message);
-    });
+const poolPromise = Promise.resolve({
+  request: () => ({
+    input: function() { return this; },
+    query: async (q) => {
+      const result = await pool.query(q);
+      return { recordset: result.rows };
+    }
+  })
+});
 
-module.exports = { sql, poolPromise };
+module.exports = { sql, poolPromise }; 
