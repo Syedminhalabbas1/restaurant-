@@ -136,7 +136,7 @@
 
     async function loadStats() {
       try {
-        const res = await fetch('http://localhost:3000/api/stats');
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/stats');
         const s = await res.json();
         document.getElementById('stat-menu').textContent = s.totalMenu;
         document.getElementById('stat-orders').textContent = s.totalOrders;
@@ -147,7 +147,7 @@
 
     async function loadOrders() {
       try {
-        const res = await fetch('http://localhost:3000/api/orders');
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/orders');
         const orders = await res.json();
         const list = document.getElementById('orders-list');
         if (!orders.length) { list.innerHTML = '<p class="empty">No orders yet.</p>'; return; }
@@ -170,7 +170,7 @@
 
     async function updateStatus(id, status) {
       try {
-        await fetch(`http://localhost:3000/api/orders/${id}`, {
+        await fetch(`https://restaurant-ten-indol.vercel.app/api/orders/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
@@ -182,7 +182,7 @@
 
     async function loadMenuManage() {
       try {
-        const res = await fetch('http://localhost:3000/api/menu');
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/menu');
         menuItems = await res.json();
         const el = document.getElementById('manage-list');
         el.innerHTML = menuItems.map(item => `
@@ -215,7 +215,7 @@
       const description = document.getElementById('edit-desc').value.trim();
       if (!name || !price) { showToast('⚠️ Fill all fields'); return; }
       try {
-        await fetch(`http://localhost:3000/api/menu/${id}`, {
+        await fetch(`https://restaurant-ten-indol.vercel.app/api/menu/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, price: parseFloat(price), description })
@@ -234,7 +234,7 @@
       const desc  = document.getElementById('new-desc').value.trim();
       if (!name || !price) { showToast('⚠️ Fill in name and price'); return; }
       try {
-        const res = await fetch('http://localhost:3000/api/menu', {
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/menu', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, category: cat, price: parseFloat(price), description: desc })
@@ -252,7 +252,7 @@
     async function deleteItem(id, name) {
       if (!confirm(`Remove "${name}" from menu?`)) return;
       try {
-        await fetch(`http://localhost:3000/api/menu/${id}`, { method: 'DELETE' });
+        await fetch(`https://restaurant-ten-indol.vercel.app/api/menu/${id}`, { method: 'DELETE' });
         showToast(`✅ ${name} removed!`);
         loadMenuManage();
         loadStats();

@@ -78,7 +78,7 @@ node server.js
 You should see:
 ```
 ✅ Connected to SQL Server!
-🚀 Server running at http://localhost:3000
+🚀 Server running at https://restaurant-ten-indol.vercel.app
 ```
 
 If you see a connection error, check STEP 6.

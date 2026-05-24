@@ -131,7 +131,7 @@
 
     async function loadMenu() {
       try {
-        const res = await fetch('http://localhost:3000/api/menu');
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/menu');
         allItems = await res.json();
         renderMenu(allItems);
         loadReviewItemSelect(allItems);
@@ -164,7 +164,7 @@
     async function loadAllRatings(items) {
       for (const item of items) {
         try {
-          const res = await fetch(`http://localhost:3000/api/reviews/${item.id}`);
+          const res = await fetch(`https://restaurant-ten-indol.vercel.app/api/reviews/${item.id}`);
           const reviews = await res.json();
           const el = document.getElementById(`rating-${item.id}`);
           if (el) {
@@ -186,7 +186,7 @@
 
     async function loadReviews() {
       try {
-        const res = await fetch('http://localhost:3000/api/reviews');
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/reviews');
         const reviews = await res.json();
         const grid = document.getElementById('reviews-grid');
         if (!reviews.length) {
@@ -213,7 +213,7 @@
       if (!selectedRating) { showToast('⚠️ Select a rating'); return; }
       if (!comment) { showToast('⚠️ Write a comment'); return; }
       try {
-        await fetch('http://localhost:3000/api/reviews', {
+        await fetch('https://restaurant-ten-indol.vercel.app/api/reviews', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ customer_name: name, menu_id, rating: selectedRating, comment })
@@ -232,7 +232,7 @@
 
     async function loadStats() {
       try {
-        const res = await fetch('http://localhost:3000/api/stats');
+        const res = await fetch('https://restaurant-ten-indol.vercel.app/api/stats');
         const s = await res.json();
         document.getElementById('stat-menu').textContent = s.totalMenu;
         document.getElementById('stat-orders').textContent = s.totalOrders;
